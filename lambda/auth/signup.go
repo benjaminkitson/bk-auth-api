@@ -14,8 +14,8 @@ import (
 )
 
 type signUpInput struct {
-	Password string `json:"password"`
 	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type signUpOutput struct {

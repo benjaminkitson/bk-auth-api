@@ -13,7 +13,7 @@ import (
 )
 
 type signInInput struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -41,7 +41,7 @@ func HandleSignIn(body string, sc secrets.SecretsClient, logger *zap.Logger) (si
 	output, err := cognitoClient.InitiateAuth(context.TODO(), &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow:       "USER_PASSWORD_AUTH",
 		ClientId:       aws.String(clientId),
-		AuthParameters: map[string]string{"USERNAME": s.Username, "PASSWORD": s.Password},
+		AuthParameters: map[string]string{"USERNAME": s.Email, "PASSWORD": s.Password},
 	})
 
 	if err != nil {
