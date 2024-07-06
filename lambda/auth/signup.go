@@ -21,7 +21,7 @@ type signUpOutput struct {
 	Message string `json:"message"`
 }
 
-func HandleSignUp(body string, sc secrets.SecretsClient, cc *cognitoidentityprovider.Client, logger *zap.Logger) (signUpOutput, error) {
+func HandleSignUp(body string, sc secrets.SecretGetter, cc *cognitoidentityprovider.Client, logger *zap.Logger) (signUpOutput, error) {
 	var s signUpInput
 	err := json.Unmarshal([]byte(body), &s)
 	if err != nil {

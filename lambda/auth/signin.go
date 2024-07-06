@@ -21,7 +21,7 @@ type signInOutput struct {
 	Token   string `json:"token"`
 }
 
-func HandleSignIn(body string, sc secrets.SecretsClient, cc *cognitoidentityprovider.Client, logger *zap.Logger) (signInOutput, error) {
+func HandleSignIn(body string, sc secrets.SecretGetter, cc *cognitoidentityprovider.Client, logger *zap.Logger) (signInOutput, error) {
 	var s signInInput
 	// TODO: errors aren't handled in any of these cases
 	err := json.Unmarshal([]byte(body), &s)

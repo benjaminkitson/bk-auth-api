@@ -19,7 +19,7 @@ type verifyOutput struct {
 	Message string `json:"message"`
 }
 
-func HandleVerify(body string, sc secrets.SecretsClient, cc *cognitoidentityprovider.Client, logger *zap.Logger) (verifyOutput, error) {
+func HandleVerify(body string, sc secrets.SecretGetter, cc *cognitoidentityprovider.Client, logger *zap.Logger) (verifyOutput, error) {
 	var v verifyInput
 	err := json.Unmarshal([]byte(body), &v)
 	if err != nil {

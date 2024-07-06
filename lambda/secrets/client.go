@@ -13,6 +13,10 @@ type SecretsClient struct {
 	smc    *secretsmanager.Client
 }
 
+type SecretGetter interface {
+	GetSecret(string) (string, error)
+}
+
 func NewSecretsClient(l *zap.Logger) (SecretsClient, error) {
 	l.Info("Initialising secrets client")
 	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
