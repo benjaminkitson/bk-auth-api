@@ -9,6 +9,8 @@ import (
 	"github.com/auth-api/lambda/secrets"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +21,6 @@ func main() {
 }
 
 // TODO: make distinction between 400 and 500 errors
-// TODO: change various fmt.Printlns to log statements
 
 // Wrapper around json.Marshal that handles generic error cases
 func getResponseBody(data any) string {
@@ -52,6 +53,19 @@ func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (ev
 		"Access-Control-Allow-Methods": "OPTIONS,POST,GET",
 	}
 
+	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		logger.Error("Failed to intialise SDK config", zap.Error(err))
+		s := getResponseBody(err)
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+			Headers:    headers,
+			Body:       s,
+		}, nil
+	}
+
+	cognitoClient := cognitoidentityprovider.NewFromConfig(sdkConfig)
+
 	secretsClient, err := secrets.NewSecretsClient(logger)
 	if err != nil {
 		logger.Error("failed to initialise secrets client", zap.Error(err))
@@ -64,7 +78,7 @@ func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (ev
 	}
 
 	if request.Path == "/signup" {
-		r, err := auth.HandleSignUp(request.Body, secretsClient, logger)
+		r, err := auth.HandleSignUp(request.Body, secretsClient, cognitoClient, logger)
 		if err != nil {
 			logger.Error("signup error", zap.Error(err))
 			s := getResponseBody(err)
@@ -83,7 +97,7 @@ func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (ev
 	}
 
 	if request.Path == "/signin" {
-		r, err := auth.HandleSignIn(request.Body, secretsClient, logger)
+		r, err := auth.HandleSignIn(request.Body, secretsClient, cognitoClient, logger)
 		if err != nil {
 			logger.Error("signin error", zap.Error(err))
 			s := getResponseBody(err)
@@ -102,7 +116,7 @@ func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (ev
 	}
 
 	if request.Path == "/verify" {
-		r, err := auth.HandleVerify(request.Body, secretsClient, logger)
+		r, err := auth.HandleVerify(request.Body, secretsClient, cognitoClient, logger)
 		if err != nil {
 			logger.Error("verify error", zap.Error(err))
 			s := getResponseBody(r)
