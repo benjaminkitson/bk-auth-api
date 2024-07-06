@@ -21,7 +21,10 @@ type verifyOutput struct {
 
 func HandleVerify(body string, sc secrets.SecretsClient, cc *cognitoidentityprovider.Client, logger *zap.Logger) (verifyOutput, error) {
 	var v verifyInput
-	json.Unmarshal([]byte(body), &v)
+	err := json.Unmarshal([]byte(body), &v)
+	if err != nil {
+		return verifyOutput{}, err
+	}
 
 	clientId, err := sc.GetSecret("COGNITO_CLIENT")
 	if err != nil {

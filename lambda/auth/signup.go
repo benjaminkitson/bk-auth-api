@@ -23,7 +23,10 @@ type signUpOutput struct {
 
 func HandleSignUp(body string, sc secrets.SecretsClient, cc *cognitoidentityprovider.Client, logger *zap.Logger) (signUpOutput, error) {
 	var s signUpInput
-	json.Unmarshal([]byte(body), &s)
+	err := json.Unmarshal([]byte(body), &s)
+	if err != nil {
+		return signUpOutput{}, err
+	}
 
 	clientId, err := sc.GetSecret("COGNITO_CLIENT")
 	if err != nil {

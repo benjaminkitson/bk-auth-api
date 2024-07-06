@@ -37,6 +37,10 @@ func getResponseBody(data any) string {
 	return string(r)
 }
 
+/*
+Handler function for requests to the auth API - debatable how scalable this approach is, and the code is currently too coupled to Cognito as an auth provider
+The auth package in general should probably be converted into a dedicated "Cognito Adapter" with the sign up, sign in etc methods
+*/
 func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -77,6 +81,7 @@ func handleRequest(_ context.Context, request events.APIGatewayProxyRequest) (ev
 		}, nil
 	}
 
+	// Each of these should be converted into some generalised method that accepts the "auth.SomeFunction" function as an argument
 	if request.Path == "/signup" {
 		r, err := auth.HandleSignUp(request.Body, secretsClient, cognitoClient, logger)
 		if err != nil {
