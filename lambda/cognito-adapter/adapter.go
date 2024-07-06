@@ -13,36 +13,37 @@ import (
 	"go.uber.org/zap"
 )
 
-type CognitoAdapter struct {
+type Adapter struct {
 	identityProviderClient *cognitoidentityprovider.Client
 	clientId               string
 	logger                 *zap.Logger
 }
 
-func NewCognitoAdapter(sc secrets.SecretGetter, logger *zap.Logger) (CognitoAdapter, error) {
+func NewAdapter(sc secrets.SecretGetter, logger *zap.Logger) (Adapter, error) {
 	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		logger.Error("Failed to intialise SDK config", zap.Error(err))
-		return CognitoAdapter{}, nil
+		return Adapter{}, nil
 	}
 
 	cc := cognitoidentityprovider.NewFromConfig(sdkConfig)
 	ccid, err := sc.GetSecret("COGNITO_CLIENT")
 	if err != nil {
 		logger.Error("Faled to get cognito client id", zap.Error(err))
-		return CognitoAdapter{}, nil
+		return Adapter{}, nil
 	}
 
-	return CognitoAdapter{
+	return Adapter{
 		identityProviderClient: cc,
 		clientId:               ccid,
 		logger:                 logger,
 	}, nil
 }
 
-type CognitoAdapterHandler func(string) (string, error)
+type AdapterHandler func(string) (string, error)
 
-// TODO: All of the "input" and "output" types in this file could probably just be `map[string]string``
+// TODO: All of the "input" and "output" types in this file could probably just be `map[string]string`
+// TODO: Some errors (username already exists, incorrect password etc) aren't really errors at all, and need to be accounted for
 
 /*
 Sign in
@@ -58,7 +59,7 @@ type signInOutput struct {
 	Token   string `json:"token"`
 }
 
-func (ca CognitoAdapter) SignIn(body string) (string, error) {
+func (ca Adapter) SignIn(body string) (string, error) {
 	var s signInInput
 	// TODO: errors aren't handled in any of these cases
 	err := json.Unmarshal([]byte(body), &s)
@@ -100,7 +101,7 @@ type signUpOutput struct {
 	Message string `json:"message"`
 }
 
-func (ca CognitoAdapter) SignUp(body string) (string, error) {
+func (ca Adapter) SignUp(body string) (string, error) {
 	var s signUpInput
 	err := json.Unmarshal([]byte(body), &s)
 	if err != nil {
@@ -143,7 +144,7 @@ type verifyOutput struct {
 Verify email
 */
 
-func (ca CognitoAdapter) VerifyEmail(body string) (string, error) {
+func (ca Adapter) VerifyEmail(body string) (string, error) {
 	var v verifyInput
 	err := json.Unmarshal([]byte(body), &v)
 	if err != nil {
@@ -172,7 +173,7 @@ func (ca CognitoAdapter) VerifyEmail(body string) (string, error) {
 }
 
 // Wrapper around json.Marshal that handles generic error cases
-func (ca CognitoAdapter) getResponseBody(data any) string {
+func (ca Adapter) getResponseBody(data any) string {
 	// Fallback JSON string in case marshalling somehow goes wrong
 	e := "{\"message\": \"Something went wrong!\"}"
 	if _, ok := data.(error); ok {
