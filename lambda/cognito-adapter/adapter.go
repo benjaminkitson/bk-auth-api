@@ -29,7 +29,7 @@ func NewAdapter(sc secrets.SecretGetter, logger *zap.Logger) (Adapter, error) {
 	cc := cognitoidentityprovider.NewFromConfig(sdkConfig)
 	ccid, err := sc.GetSecret("COGNITO_CLIENT")
 	if err != nil {
-		logger.Error("Faled to get cognito client id", zap.Error(err))
+		logger.Error("Failed to get cognito client id", zap.Error(err))
 		return Adapter{}, nil
 	}
 
@@ -39,8 +39,6 @@ func NewAdapter(sc secrets.SecretGetter, logger *zap.Logger) (Adapter, error) {
 		logger:                 logger,
 	}, nil
 }
-
-type AdapterHandler func(string) (string, error)
 
 // TODO: All of the "input" and "output" types in this file could probably just be `map[string]string`
 // TODO: Some errors (username already exists, incorrect password etc) aren't really errors at all, and need to be accounted for
