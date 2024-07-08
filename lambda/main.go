@@ -33,7 +33,7 @@ func main() {
 			return events.APIGatewayProxyResponse{}, err
 		}
 
-		h, err := handler.NewHandler(logger, sc, ca)
+		h, err := handler.NewHandler(logger, ca)
 		if err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
@@ -41,12 +41,3 @@ func main() {
 		return h.Handle(ctx, request)
 	})
 }
-
-// TODO: make distinction between 400 and 500 errors
-
-const genericError = "{\"message\": \"Something went wrong!\"}"
-
-/*
-Handler function for requests to the auth API - debatable how scalable this approach is, and the code is currently too coupled to Cognito as an auth provider
-The auth package in general should probably be converted into a dedicated "Cognito Adapter" with the sign up, sign in etc methods
-*/

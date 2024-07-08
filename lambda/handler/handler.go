@@ -4,21 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/auth-api/lambda/secrets"
 	"github.com/aws/aws-lambda-go/events"
 	"go.uber.org/zap"
 )
 
 type handler struct {
-	secretsClient       secrets.SecretGetter
 	authProviderAdapter AuthProviderAdapter
 	logger              *zap.Logger
 }
 
-func NewHandler(logger *zap.Logger, sc secrets.SecretGetter, a AuthProviderAdapter) (handler, error) {
-
+func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
 	return handler{
-		secretsClient:       sc,
 		authProviderAdapter: a,
 		logger:              logger,
 	}, nil
@@ -42,6 +38,7 @@ const GenericError = "{\"message\": \"Something went wrong!\"}"
 
 // TODO: make distinction between 400 and 500 errors
 // TODO: understand how different methods are dealt with (post vs get etc)
+// TODO: probably incorporate some sort of request body validation prior to calling cognito or whichever auth provider
 
 func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	handler.logger.Info("request", zap.Any("request", request))

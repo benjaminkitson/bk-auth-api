@@ -34,48 +34,99 @@ func (ma MockAdapter) VerifyEmail(body string) (string, error) {
 	return "Verify email failed", nil
 }
 
-type MockSecretsGetter struct {
-	isError bool
-}
-
-func (ms MockSecretsGetter) GetSecret(name string) (string, error) {
-	if ms.isError {
-		return "", fmt.Errorf("Secrets client error")
-	}
-	return "superSecret", nil
-}
-
-func TestSignInSuccess(t *testing.T) {
-	l, err := zap.NewDevelopment()
-	if err != nil {
-		t.Fatalf("Failed to initialise dev logger")
+/*
+Tests the basic workings of the handler, using a mocked auth provider client that either succeeds or returns some generic error
+*/
+func TestHandler(t *testing.T) {
+	type test struct {
+		Name                   string
+		AdapterError           bool
+		SecretsGetterError     bool
+		RequestBody            string
+		RequestPath            string
+		ExpectedStatusCode     int
+		IsHandlerErrorExpected bool
 	}
 
-	s := MockSecretsGetter{
-		isError: false,
+	tests := []test{
+		{
+			Name:               "Sign in success",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:        "/signin",
+			ExpectedStatusCode: 200,
+		},
+		{
+			Name:               "Sign in auth provider adapter error",
+			AdapterError:       true,
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:        "/signin",
+			ExpectedStatusCode: 500,
+		},
+		{
+			Name:               "Sign up success",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:        "/signup",
+			ExpectedStatusCode: 200,
+		},
+		{
+			Name:               "Sign up auth provider adapter error",
+			AdapterError:       true,
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:        "/signup",
+			ExpectedStatusCode: 500,
+		},
+		{
+			Name:               "Verify email success",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestPath:        "/verify",
+			ExpectedStatusCode: 200,
+		},
+		{
+			Name:               "Verify email auth provider adapter error",
+			AdapterError:       true,
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestPath:        "/verify",
+			ExpectedStatusCode: 500,
+		},
+		{
+			Name:                   "Invalid path supplied",
+			RequestBody:            "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:            "/someInvalidPath",
+			ExpectedStatusCode:     500,
+			IsHandlerErrorExpected: true,
+		},
 	}
 
-	m := MockAdapter{
-		isError: false,
-	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			l, err := zap.NewDevelopment()
+			if err != nil {
+				t.Fatalf("Failed to initialise dev logger")
+			}
 
-	h, err := NewHandler(l, s, m)
-	if err != nil {
-		t.Fatalf("Failed to initialise handler")
-	}
+			m := MockAdapter{
+				isError: tt.AdapterError,
+			}
 
-	req := events.APIGatewayProxyRequest{
-		// This test should probably fail if the body isn't the correct format?
-		Body: "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
-		Path: "/signin",
-	}
+			h, err := NewHandler(l, m)
+			if err != nil {
+				t.Fatalf("Failed to initialise handler")
+			}
 
-	r, err := h.Handle(context.TODO(), req)
-	if err != nil {
-		t.Fatalf("Handler failed")
-	}
+			req := events.APIGatewayProxyRequest{
+				// This test should probably fail if the body isn't the correct format?
+				Body: tt.RequestBody,
+				Path: tt.RequestPath,
+			}
 
-	if r.StatusCode != 200 {
-		t.Fatalf("Expected Status Code to be 200")
+			r, err := h.Handle(context.TODO(), req)
+			if err != nil && !tt.IsHandlerErrorExpected {
+				t.Fatalf("Unexpected handler error")
+			}
+
+			if r.StatusCode != tt.ExpectedStatusCode {
+				t.Fatalf("Expected Status Code to be %v", tt.ExpectedStatusCode)
+			}
+		})
 	}
 }
