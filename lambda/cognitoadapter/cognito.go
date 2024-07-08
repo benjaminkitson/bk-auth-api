@@ -32,28 +32,16 @@ func NewAdapter(cc *cognitoidentityprovider.Client, ccid string, logger *zap.Log
 Sign in
 */
 
-type signInInput struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 type signInOutput struct {
 	Message string `json:"message"`
 	Token   string `json:"token"`
 }
 
-func (ca Adapter) SignIn(body string) (string, error) {
-	var s signInInput
-	// TODO: errors aren't handled in any of these cases
-	err := json.Unmarshal([]byte(body), &s)
-	if err != nil {
-		return "", err
-	}
-
+func (ca Adapter) SignIn(body map[string]string) (string, error) {
 	output, err := ca.identityProviderClient.InitiateAuth(context.TODO(), &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow:       "USER_PASSWORD_AUTH",
 		ClientId:       aws.String(ca.clientId),
-		AuthParameters: map[string]string{"USERNAME": s.Email, "PASSWORD": s.Password},
+		AuthParameters: map[string]string{"USERNAME": body["email"], "PASSWORD": body["password"]},
 	})
 
 	if err != nil {
@@ -75,26 +63,15 @@ func (ca Adapter) SignIn(body string) (string, error) {
 Sign up
 */
 
-type signUpInput struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 type signUpOutput struct {
 	Message string `json:"message"`
 }
 
-func (ca Adapter) SignUp(body string) (string, error) {
-	var s signUpInput
-	err := json.Unmarshal([]byte(body), &s)
-	if err != nil {
-		return "", err
-	}
-
+func (ca Adapter) SignUp(body map[string]string) (string, error) {
 	output, err := ca.identityProviderClient.SignUp(context.TODO(), &cognitoidentityprovider.SignUpInput{
 		ClientId: jsii.String(ca.clientId),
-		Password: jsii.String(s.Password),
-		Username: jsii.String(s.Email),
+		Password: jsii.String(body["password"]),
+		Username: jsii.String(body["email"]),
 
 		// UserAttributes: []types.AttributeType{
 		// 	{Name: jsii.String("email"), Value: jsii.String(s.Email)},
@@ -114,11 +91,6 @@ func (ca Adapter) SignUp(body string) (string, error) {
 	return ca.getResponseBody(r), nil
 }
 
-type verifyInput struct {
-	Email string `json:"email"`
-	Code  string `json:"code"`
-}
-
 type verifyOutput struct {
 	Message string `json:"message"`
 }
@@ -127,17 +99,11 @@ type verifyOutput struct {
 Verify email
 */
 
-func (ca Adapter) VerifyEmail(body string) (string, error) {
-	var v verifyInput
-	err := json.Unmarshal([]byte(body), &v)
-	if err != nil {
-		return "", err
-	}
-
+func (ca Adapter) VerifyEmail(body map[string]string) (string, error) {
 	output, err := ca.identityProviderClient.ConfirmSignUp(context.TODO(), &cognitoidentityprovider.ConfirmSignUpInput{
 		ClientId:         jsii.String(ca.clientId),
-		ConfirmationCode: jsii.String(v.Code),
-		Username:         jsii.String(v.Email),
+		ConfirmationCode: jsii.String(body["code"]),
+		Username:         jsii.String(body["email"]),
 	})
 
 	if err != nil {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -20,12 +21,12 @@ func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
 	}, nil
 }
 
-type AdapterHandler func(string) (string, error)
+type AdapterHandler func(map[string]string) (string, error)
 
 type AuthProviderAdapter interface {
-	SignIn(string) (string, error)
-	SignUp(string) (string, error)
-	VerifyEmail(string) (string, error)
+	SignIn(map[string]string) (string, error)
+	SignUp(map[string]string) (string, error)
+	VerifyEmail(map[string]string) (string, error)
 }
 
 var Headers = map[string]string{
@@ -41,19 +42,29 @@ const GenericError = "{\"message\": \"Something went wrong!\"}"
 // TODO: probably incorporate some sort of request body validation prior to calling cognito or whichever auth provider
 
 func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	handler.logger.Info("request", zap.Any("request", request))
+	bodyMap := make(map[string]string)
+
+	err := json.Unmarshal([]byte(request.Body), &bodyMap)
+	if err != nil {
+		handler.logger.Error("Error parsing request body", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+			Headers:    Headers,
+			// Error body needed? Probably not
+		}, fmt.Errorf("error parsing request body")
+	}
 
 	// TODO: this is clever but too confusing
 	if request.Path == "/signup" {
-		return handler.handlePath(handler.authProviderAdapter.SignUp, request.Body)
+		return handler.handlePath(handler.authProviderAdapter.SignUp, bodyMap)
 	}
 
 	if request.Path == "/signin" {
-		return handler.handlePath(handler.authProviderAdapter.SignIn, request.Body)
+		return handler.handlePath(handler.authProviderAdapter.SignIn, bodyMap)
 	}
 
 	if request.Path == "/verify" {
-		return handler.handlePath(handler.authProviderAdapter.VerifyEmail, request.Body)
+		return handler.handlePath(handler.authProviderAdapter.VerifyEmail, bodyMap)
 	}
 
 	handler.logger.Error("invalid path")
@@ -64,7 +75,7 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 	}, fmt.Errorf("invalid path")
 }
 
-func (handler handler) handlePath(pathFunc AdapterHandler, rb string) (events.APIGatewayProxyResponse, error) {
+func (handler handler) handlePath(pathFunc AdapterHandler, rb map[string]string) (events.APIGatewayProxyResponse, error) {
 	r, err := pathFunc(rb)
 	if err != nil {
 		handler.logger.Error("signin error", zap.Error(err))
