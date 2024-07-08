@@ -11,12 +11,12 @@ import (
 )
 
 type Adapter struct {
-	identityProviderClient *cognitoidentityprovider.Client
+	identityProviderClient CognitoClient
 	clientId               string
 	logger                 *zap.Logger
 }
 
-func NewAdapter(cc *cognitoidentityprovider.Client, ccid string, logger *zap.Logger) Adapter {
+func NewAdapter(cc CognitoClient, ccid string, logger *zap.Logger) Adapter {
 	return Adapter{
 		identityProviderClient: cc,
 		clientId:               ccid,
@@ -24,7 +24,15 @@ func NewAdapter(cc *cognitoidentityprovider.Client, ccid string, logger *zap.Log
 	}
 }
 
+type CognitoClient interface {
+	InitiateAuth(ctx context.Context, params *cognitoidentityprovider.InitiateAuthInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.InitiateAuthOutput, error)
+	SignUp(ctx context.Context, params *cognitoidentityprovider.SignUpInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.SignUpOutput, error)
+	ConfirmSignUp(ctx context.Context, params *cognitoidentityprovider.ConfirmSignUpInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.ConfirmSignUpOutput, error)
+}
+
 // TODO: Some errors (username already exists, incorrect password etc) aren't really errors at all, and need to be accounted for
+
+const signInSuccessMessage = "Successfully signed in!"
 
 func (ca Adapter) SignIn(body map[string]string) (map[string]string, error) {
 	output, err := ca.identityProviderClient.InitiateAuth(context.TODO(), &cognitoidentityprovider.InitiateAuthInput{
@@ -41,9 +49,11 @@ func (ca Adapter) SignIn(body map[string]string) (map[string]string, error) {
 
 	return map[string]string{
 		"token":   *output.AuthenticationResult.AccessToken,
-		"message": "Successfully signed in!",
+		"message": signInSuccessMessage,
 	}, nil
 }
+
+const signUpSuccessMessage = "Successfully signed up!"
 
 func (ca Adapter) SignUp(body map[string]string) (map[string]string, error) {
 	output, err := ca.identityProviderClient.SignUp(context.TODO(), &cognitoidentityprovider.SignUpInput{
@@ -62,9 +72,11 @@ func (ca Adapter) SignUp(body map[string]string) (map[string]string, error) {
 	ca.logger.Info("signup output", zap.Any("output", output))
 
 	return map[string]string{
-		"message": "Successfully signed up!",
+		"message": signUpSuccessMessage,
 	}, nil
 }
+
+const verifyEmailSuccessMessage = "Successfully verified email address!"
 
 func (ca Adapter) VerifyEmail(body map[string]string) (map[string]string, error) {
 	output, err := ca.identityProviderClient.ConfirmSignUp(context.TODO(), &cognitoidentityprovider.ConfirmSignUpInput{
@@ -81,6 +93,6 @@ func (ca Adapter) VerifyEmail(body map[string]string) (map[string]string, error)
 	ca.logger.Info("verify output", zap.Any("output", output))
 
 	return map[string]string{
-		"message": "Successfully verified email address!",
+		"message": verifyEmailSuccessMessage,
 	}, nil
 }
