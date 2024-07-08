@@ -21,12 +21,12 @@ func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
 	}, nil
 }
 
-type AdapterHandler func(map[string]string) (string, error)
+type AdapterHandler func(map[string]string) (map[string]string, error)
 
 type AuthProviderAdapter interface {
-	SignIn(map[string]string) (string, error)
-	SignUp(map[string]string) (string, error)
-	VerifyEmail(map[string]string) (string, error)
+	SignIn(map[string]string) (map[string]string, error)
+	SignUp(map[string]string) (map[string]string, error)
+	VerifyEmail(map[string]string) (map[string]string, error)
 }
 
 var Headers = map[string]string{
@@ -76,7 +76,16 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 }
 
 func (handler handler) handlePath(pathFunc AdapterHandler, rb map[string]string) (events.APIGatewayProxyResponse, error) {
-	r, err := pathFunc(rb)
+	d, err := pathFunc(rb)
+	if err != nil {
+		handler.logger.Error("Failed to get response body from Cognito adapter", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+			Headers:    Headers,
+			Body:       GenericError,
+		}, nil
+	}
+	r, err := json.Marshal(d)
 	if err != nil {
 		handler.logger.Error("signin error", zap.Error(err))
 		return events.APIGatewayProxyResponse{
@@ -88,6 +97,6 @@ func (handler handler) handlePath(pathFunc AdapterHandler, rb map[string]string)
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers:    Headers,
-		Body:       r,
+		Body:       string(r),
 	}, nil
 }

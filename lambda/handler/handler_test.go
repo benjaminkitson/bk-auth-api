@@ -13,25 +13,31 @@ type MockAdapter struct {
 	isError bool
 }
 
-func (ma MockAdapter) SignIn(body map[string]string) (string, error) {
+func (ma MockAdapter) SignIn(body map[string]string) (map[string]string, error) {
 	if ma.isError {
-		return "", fmt.Errorf("Auth provider error")
+		return nil, fmt.Errorf("Auth provider error")
 	}
-	return "Sign in failed", nil
+	return map[string]string{
+		"message": "Successfully signed in!",
+	}, nil
 }
 
-func (ma MockAdapter) SignUp(body map[string]string) (string, error) {
+func (ma MockAdapter) SignUp(body map[string]string) (map[string]string, error) {
 	if ma.isError {
-		return "", fmt.Errorf("Auth provider error")
+		return nil, fmt.Errorf("Auth provider error")
 	}
-	return "Sign up failed", nil
+	return map[string]string{
+		"message": "Successfully signed up!",
+	}, nil
 }
 
-func (ma MockAdapter) VerifyEmail(body map[string]string) (string, error) {
+func (ma MockAdapter) VerifyEmail(body map[string]string) (map[string]string, error) {
 	if ma.isError {
-		return "", fmt.Errorf("Auth provider error")
+		return nil, fmt.Errorf("Auth provider error")
 	}
-	return "Verify email failed", nil
+	return map[string]string{
+		"message": "Successfully verified email!",
+	}, nil
 }
 
 /*
