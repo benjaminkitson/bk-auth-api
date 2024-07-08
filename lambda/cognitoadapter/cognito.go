@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/auth-api/lambda/secrets"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/jsii-runtime-go"
 	"go.uber.org/zap"
@@ -19,25 +17,12 @@ type Adapter struct {
 	logger                 *zap.Logger
 }
 
-func NewAdapter(sc secrets.SecretGetter, logger *zap.Logger) (Adapter, error) {
-	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		logger.Error("Failed to intialise SDK config", zap.Error(err))
-		return Adapter{}, nil
-	}
-
-	cc := cognitoidentityprovider.NewFromConfig(sdkConfig)
-	ccid, err := sc.GetSecret("COGNITO_CLIENT")
-	if err != nil {
-		logger.Error("Failed to get cognito client id", zap.Error(err))
-		return Adapter{}, nil
-	}
-
+func NewAdapter(cc *cognitoidentityprovider.Client, ccid string, logger *zap.Logger) Adapter {
 	return Adapter{
 		identityProviderClient: cc,
 		clientId:               ccid,
 		logger:                 logger,
-	}, nil
+	}
 }
 
 // TODO: All of the "input" and "output" types in this file could probably just be `map[string]string`

@@ -3,7 +3,6 @@ package secrets
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"go.uber.org/zap"
 )
@@ -17,26 +16,25 @@ type SecretGetter interface {
 	GetSecret(string) (string, error)
 }
 
-func NewSecretsClient(l *zap.Logger) (SecretsClient, error) {
-	l.Info("Initialising secrets client")
-	sdkConfig, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		l.Error("Failed to intialise SDK config", zap.Error(err))
-		return SecretsClient{}, err
-	}
-	s := secretsmanager.NewFromConfig(sdkConfig)
+/*
+Simple wrapper around the Secrets Manager client for retrieving a secret
+TODO: Write tests? Disproportionately complicated given how simple this is
+*/
+func NewSecretsClient(l *zap.Logger, sm *secretsmanager.Client) (SecretsClient, error) {
 	return SecretsClient{
 		logger: l,
-		smc:    s,
+		smc:    sm,
 	}, nil
 
 }
 
 func (sc SecretsClient) GetSecret(name string) (string, error) {
+	sc.logger.Info("Getting secret")
 	sv, err := sc.smc.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
 		SecretId: &name,
 	})
 	if err != nil {
+		sc.logger.Error("Failed to retrieve secret", zap.Error(err))
 		return "", err
 	}
 	return *sv.SecretString, nil
