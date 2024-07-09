@@ -66,11 +66,17 @@ func TestSignIn(t *testing.T) {
 			},
 		},
 		{
-			Name: "Sign in error",
+			Name: "Sign in cognito client error",
 			RequestBody: map[string]string{
 				"email":    "abc@gmail.com",
 				"password": "password",
 			},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+		{
+			Name:             "Sign in invalid request body error",
+			RequestBody:      map[string]string{},
 			ExpectedError:    true,
 			ExpectedResponse: nil,
 		},
@@ -93,6 +99,132 @@ func TestSignIn(t *testing.T) {
 			}
 
 			r, err := ca.SignIn(tt.RequestBody)
+			if err != nil && !tt.ExpectedError {
+				t.Fatalf("Unexpected handler error %v", err)
+			}
+			if !reflect.DeepEqual(r, tt.ExpectedResponse) {
+				t.Fatalf("Unexpected response %v", r)
+			}
+		})
+	}
+}
+
+func TestSignUp(t *testing.T) {
+	type test struct {
+		Name             string
+		RequestBody      map[string]string
+		ExpectedError    bool
+		ExpectedResponse map[string]string
+	}
+
+	tests := []test{
+		{
+			Name: "Sign up success",
+			RequestBody: map[string]string{
+				"email":    "abc@gmail.com",
+				"password": "password",
+			},
+			ExpectedResponse: map[string]string{
+				"message": signUpSuccessMessage,
+			},
+		},
+		{
+			Name: "Sign up cognito client error",
+			RequestBody: map[string]string{
+				"email":    "abc@gmail.com",
+				"password": "password",
+			},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+		{
+			Name:             "Sign up invalid request body error",
+			RequestBody:      map[string]string{},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			l, err := zap.NewDevelopment()
+			if err != nil {
+				t.Fatalf("Failed to initialise dev logger")
+			}
+
+			m := MockCognitoClient{
+				isError: tt.ExpectedError,
+			}
+
+			ca := NewAdapter(m, "MockClientId", l)
+			if err != nil {
+				t.Fatalf("Failed to initialise handler")
+			}
+
+			r, err := ca.SignUp(tt.RequestBody)
+			if err != nil && !tt.ExpectedError {
+				t.Fatalf("Unexpected handler error %v", err)
+			}
+			if !reflect.DeepEqual(r, tt.ExpectedResponse) {
+				t.Fatalf("Unexpected response %v", r)
+			}
+		})
+	}
+}
+
+func TestVerifyEmail(t *testing.T) {
+	type test struct {
+		Name             string
+		RequestBody      map[string]string
+		ExpectedError    bool
+		ExpectedResponse map[string]string
+	}
+
+	tests := []test{
+		{
+			Name: "Verify email success",
+			RequestBody: map[string]string{
+				"email": "abc@gmail.com",
+				"code":  "123456",
+			},
+			ExpectedResponse: map[string]string{
+				"message": verifyEmailSuccessMessage,
+			},
+		},
+		{
+			Name: "Verify email cognito client error",
+			RequestBody: map[string]string{
+				"email": "abc@gmail.com",
+				"code":  "123456",
+			},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+		{
+			Name:             "Verify email invalid request body error",
+			RequestBody:      map[string]string{},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			l, err := zap.NewDevelopment()
+			if err != nil {
+				t.Fatalf("Failed to initialise dev logger")
+			}
+
+			m := MockCognitoClient{
+				isError: tt.ExpectedError,
+			}
+
+			ca := NewAdapter(m, "MockClientId", l)
+			if err != nil {
+				t.Fatalf("Failed to initialise handler")
+			}
+
+			r, err := ca.VerifyEmail(tt.RequestBody)
 			if err != nil && !tt.ExpectedError {
 				t.Fatalf("Unexpected handler error %v", err)
 			}

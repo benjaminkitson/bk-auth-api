@@ -35,6 +35,11 @@ type CognitoClient interface {
 const signInSuccessMessage = "Successfully signed in!"
 
 func (ca Adapter) SignIn(body map[string]string) (map[string]string, error) {
+	if body["email"] == "" || body["password"] == "" {
+		ca.logger.Error("invalid request body!")
+		return nil, fmt.Errorf("invalid request body")
+	}
+
 	output, err := ca.identityProviderClient.InitiateAuth(context.TODO(), &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow:       "USER_PASSWORD_AUTH",
 		ClientId:       aws.String(ca.clientId),
@@ -56,6 +61,11 @@ func (ca Adapter) SignIn(body map[string]string) (map[string]string, error) {
 const signUpSuccessMessage = "Successfully signed up!"
 
 func (ca Adapter) SignUp(body map[string]string) (map[string]string, error) {
+	if body["email"] == "" || body["password"] == "" {
+		ca.logger.Error("invalid request body!")
+		return nil, fmt.Errorf("invalid request body")
+	}
+
 	output, err := ca.identityProviderClient.SignUp(context.TODO(), &cognitoidentityprovider.SignUpInput{
 		ClientId: jsii.String(ca.clientId),
 		Password: jsii.String(body["password"]),
@@ -79,6 +89,11 @@ func (ca Adapter) SignUp(body map[string]string) (map[string]string, error) {
 const verifyEmailSuccessMessage = "Successfully verified email address!"
 
 func (ca Adapter) VerifyEmail(body map[string]string) (map[string]string, error) {
+	if body["email"] == "" || body["code"] == "" {
+		ca.logger.Error("invalid request body!")
+		return nil, fmt.Errorf("invalid request body")
+	}
+
 	output, err := ca.identityProviderClient.ConfirmSignUp(context.TODO(), &cognitoidentityprovider.ConfirmSignUpInput{
 		ClientId:         jsii.String(ca.clientId),
 		ConfirmationCode: jsii.String(body["code"]),
