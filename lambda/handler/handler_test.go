@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/benjaminkitson/bk-user-api/models"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +33,19 @@ func (ma MockAdapter) SignUp(body map[string]string) (map[string]string, error) 
 	}, nil
 }
 
+type MockUserAPIClient struct {
+	isError bool
+}
+
+func (c MockUserAPIClient) CreateUser(ctx context.Context, email string) (models.User, error) {
+	if c.isError {
+		return models.User{}, fmt.Errorf("API Client Error")
+	}
+	return models.User{
+		Email: email,
+	}, nil
+}
+
 func (ma MockAdapter) VerifyEmail(body map[string]string) (map[string]string, error) {
 	if ma.isError {
 		return nil, fmt.Errorf("Auth provider error")
@@ -45,26 +60,26 @@ Tests the basic workings of the handler, using a mocked auth provider client tha
 */
 func TestHandler(t *testing.T) {
 	type test struct {
-		Name                   string
-		AdapterError           bool
-		SecretsGetterError     bool
-		RequestBody            string
-		RequestPath            string
-		ExpectedStatusCode     int
-		IsHandlerErrorExpected bool
+		Name               string
+		AdapterError       bool
+		UserAPIClientError bool
+		SecretsGetterError bool
+		RequestBody        string
+		RequestPath        string
+		ExpectedStatusCode int
 	}
 
 	tests := []test{
 		{
 			Name:               "Sign in success",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
 			RequestPath:        "/signin",
 			ExpectedStatusCode: 200,
 		},
 		{
 			Name:               "Sign in auth provider adapter error",
 			AdapterError:       true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
 			RequestPath:        "/signin",
 			ExpectedStatusCode: 500,
 		},
@@ -77,7 +92,7 @@ func TestHandler(t *testing.T) {
 		{
 			Name:               "Sign up auth provider adapter error",
 			AdapterError:       true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
 			RequestPath:        "/signup",
 			ExpectedStatusCode: 500,
 		},
@@ -95,11 +110,17 @@ func TestHandler(t *testing.T) {
 			ExpectedStatusCode: 500,
 		},
 		{
-			Name:                   "Invalid path supplied",
-			RequestBody:            "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
-			RequestPath:            "/someInvalidPath",
-			ExpectedStatusCode:     500,
-			IsHandlerErrorExpected: true,
+			Name:               "Verify email user api client error",
+			UserAPIClientError: true,
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestPath:        "/verify",
+			ExpectedStatusCode: 500,
+		},
+		{
+			Name:               "Invalid path supplied",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestPath:        "/someInvalidPath",
+			ExpectedStatusCode: 400,
 		},
 	}
 
@@ -114,10 +135,12 @@ func TestHandler(t *testing.T) {
 				isError: tt.AdapterError,
 			}
 
-			h, err := NewHandler(l, m, "someurl.com")
-			if err != nil {
-				t.Fatalf("Failed to initialise handler")
+			c := MockUserAPIClient{
+				isError: tt.UserAPIClientError,
 			}
+
+			h, err := NewHandler(l, m, c)
+			assert.Nil(t, err)
 
 			req := events.APIGatewayProxyRequest{
 				// This test should probably fail if the body isn't the correct format?
@@ -126,15 +149,9 @@ func TestHandler(t *testing.T) {
 			}
 
 			r, err := h.Handle(context.TODO(), req)
-			if err != nil && !tt.IsHandlerErrorExpected {
-				t.Fatalf("Unexpected handler error")
-			}
+			assert.Nil(t, err)
 
-			t.Log(r.StatusCode)
-
-			if r.StatusCode != tt.ExpectedStatusCode {
-				t.Fatalf("Expected Status Code to be %v", tt.ExpectedStatusCode)
-			}
+			assert.Equal(t, tt.ExpectedStatusCode, r.StatusCode)
 		})
 	}
 }

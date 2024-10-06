@@ -6,21 +6,26 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/benjaminkitson/bk-user-api/client"
+	"github.com/benjaminkitson/bk-user-api/models"
 	"go.uber.org/zap"
 )
+
+type UserAPIClient interface {
+	CreateUser(ctx context.Context, email string) (models.User, error)
+}
 
 type handler struct {
 	authProviderAdapter AuthProviderAdapter
 	logger              *zap.Logger
-	apiURL              string
+	// apiURL              string
+	userAPIClient UserAPIClient
 }
 
-func NewHandler(logger *zap.Logger, a AuthProviderAdapter, u string) (handler, error) {
+func NewHandler(logger *zap.Logger, a AuthProviderAdapter, c UserAPIClient) (handler, error) {
 	return handler{
 		authProviderAdapter: a,
 		logger:              logger,
-		apiURL:              u,
+		userAPIClient:       c,
 	}, nil
 }
 
@@ -57,28 +62,9 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 		}, fmt.Errorf("error parsing request body")
 	}
 
-	// TODO: this is clever but too confusing
+	// TODO: this is clever but too confusing - this should really be three handlers
 	if request.Path == "/signup" {
-		return handler.handlePath(func(rb map[string]string) (map[string]string, error) {
-			// TODO: This should really happen at the verification stage, not the initial sign up stage
-			b, err := handler.authProviderAdapter.SignUp(rb)
-			if err != nil {
-				return nil, err
-			}
-			_, err = json.Marshal(b)
-			if err != nil {
-				return nil, err
-			}
-			c, err := client.NewClient("https://api.benjaminkitson.com", handler.logger)
-			if err != nil {
-				return nil, err
-			}
-			u, err := c.CreateUser(context.Background(), rb["email"])
-			if err != nil {
-				return nil, err
-			}
-			return map[string]string{"email": u.Email}, nil
-		}, bodyMap)
+		return handler.handlePath(handler.authProviderAdapter.SignUp, bodyMap)
 	}
 
 	if request.Path == "/signin" {
@@ -86,15 +72,29 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 	}
 
 	if request.Path == "/verify" {
-		return handler.handlePath(handler.authProviderAdapter.VerifyEmail, bodyMap)
+		return handler.handlePath(func(rb map[string]string) (map[string]string, error) {
+			b, err := handler.authProviderAdapter.VerifyEmail(rb)
+			if err != nil {
+				return nil, err
+			}
+			_, err = json.Marshal(b)
+			if err != nil {
+				return nil, err
+			}
+			u, err := handler.userAPIClient.CreateUser(context.Background(), rb["email"])
+			if err != nil {
+				return nil, err
+			}
+			return map[string]string{"email": u.Email}, nil
+		}, bodyMap)
 	}
 
-	handler.logger.Error("invalid path")
+	handler.logger.Error("invalid path", zap.String("path", request.Path))
 	return events.APIGatewayProxyResponse{
-		StatusCode: 500,
+		StatusCode: 400,
 		Headers:    Headers,
-		// Error body needed? Probably not
-	}, fmt.Errorf("invalid path")
+		Body:       "{\"message\": \"Invalid path!\"}",
+	}, nil
 }
 
 func (handler handler) handlePath(pathFunc AdapterHandler, rb map[string]string) (events.APIGatewayProxyResponse, error) {

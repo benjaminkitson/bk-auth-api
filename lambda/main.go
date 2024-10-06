@@ -14,6 +14,7 @@ import (
 	cognito "github.com/benjaminkitson/bk-auth-api/lambda/cognitoadapter"
 	"github.com/benjaminkitson/bk-auth-api/lambda/handler"
 	"github.com/benjaminkitson/bk-auth-api/lambda/secrets"
+	"github.com/benjaminkitson/bk-user-api/userapiclient"
 	"go.uber.org/zap"
 )
 
@@ -60,7 +61,12 @@ func main() {
 
 		n := o.Parameter.Value
 
-		h, err := handler.NewHandler(logger, ca, *n)
+		uc, err := userapiclient.NewClient(*n, logger)
+		if err != nil {
+			return events.APIGatewayProxyResponse{}, err
+		}
+
+		h, err := handler.NewHandler(logger, ca, uc)
 		if err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
