@@ -6,18 +6,21 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/benjaminkitson/bk-user-api/client"
 	"go.uber.org/zap"
 )
 
 type handler struct {
 	authProviderAdapter AuthProviderAdapter
 	logger              *zap.Logger
+	apiURL              string
 }
 
-func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
+func NewHandler(logger *zap.Logger, a AuthProviderAdapter, u string) (handler, error) {
 	return handler{
 		authProviderAdapter: a,
 		logger:              logger,
+		apiURL:              u,
 	}, nil
 }
 
@@ -56,7 +59,26 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 
 	// TODO: this is clever but too confusing
 	if request.Path == "/signup" {
-		return handler.handlePath(handler.authProviderAdapter.SignUp, bodyMap)
+		return handler.handlePath(func(rb map[string]string) (map[string]string, error) {
+			// TODO: This should really happen at the verification stage, not the initial sign up stage
+			b, err := handler.authProviderAdapter.SignUp(rb)
+			if err != nil {
+				return nil, err
+			}
+			_, err = json.Marshal(b)
+			if err != nil {
+				return nil, err
+			}
+			c, err := client.NewClient("https://api.benjaminkitson.com", handler.logger)
+			if err != nil {
+				return nil, err
+			}
+			u, err := c.CreateUser(context.Background(), rb["email"])
+			if err != nil {
+				return nil, err
+			}
+			return map[string]string{"email": u.Email}, nil
+		}, bodyMap)
 	}
 
 	if request.Path == "/signin" {

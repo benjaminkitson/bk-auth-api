@@ -3,15 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
-	cognito "github.com/auth-api/lambda/cognitoadapter"
-	"github.com/auth-api/lambda/handler"
-	"github.com/auth-api/lambda/secrets"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	cognito "github.com/benjaminkitson/bk-auth-api/lambda/cognitoadapter"
+	"github.com/benjaminkitson/bk-auth-api/lambda/handler"
+	"github.com/benjaminkitson/bk-auth-api/lambda/secrets"
 	"go.uber.org/zap"
 )
 
@@ -38,6 +40,7 @@ func main() {
 		}
 
 		cc := cognitoidentityprovider.NewFromConfig(sdkConfig)
+		// TODO: investigate just storing this as an env var from the CDK
 		ccid, err := sc.GetSecret("COGNITO_CLIENT")
 		if err != nil {
 			logger.Error("Failed to get cognito client id", zap.Error(err))
@@ -46,7 +49,18 @@ func main() {
 
 		ca := cognito.NewAdapter(cc, ccid, logger)
 
-		h, err := handler.NewHandler(logger, ca)
+		c := ssm.NewFromConfig(sdkConfig)
+
+		paramName := os.Getenv("USER_API_PARAMETER_NAME")
+
+		o, err := c.GetParameter(ctx, &ssm.GetParameterInput{Name: &paramName})
+		if err != nil {
+			return events.APIGatewayProxyResponse{}, err
+		}
+
+		n := o.Parameter.Value
+
+		h, err := handler.NewHandler(logger, ca, *n)
 		if err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssecretsmanager"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsssm"
 	awslambdago "github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -59,6 +60,8 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		},
 	})
 
+	userAPIParamName := jsii.String("/http-endpoints/user-api")
+
 	authLambda := awslambdago.NewGoFunction(stack, jsii.String("authHandler"), &awslambdago.GoFunctionProps{
 		Architecture: awslambda.Architecture_ARM_64(),
 		Description:  jsii.String("Handler for Auth"),
@@ -70,6 +73,9 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		Entry:      jsii.String("../lambda"),
 		MemorySize: jsii.Number(256),
 		Timeout:    awscdk.Duration_Minutes(jsii.Number(5)),
+		Environment: &map[string]*string{
+			"USER_API_PARAMETER_NAME": userAPIParamName,
+		},
 	})
 
 	c := awssecretsmanager.NewSecret(stack, jsii.String("cognitoClientId"), &awssecretsmanager.SecretProps{
@@ -79,8 +85,17 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 
 	c.GrantRead(authLambda, nil)
 
+	p := awsssm.NewStringParameter(stack, jsii.String("userAPIEndpoint"), &awsssm.StringParameterProps{
+		ParameterName: userAPIParamName,
+		// Added after the fact in the console
+		StringValue: jsii.String("/"),
+	})
+
+	p.GrantRead(authLambda)
+
 	authApi := awsapigateway.NewLambdaRestApi(stack, jsii.String("Endpoint"), &awsapigateway.LambdaRestApiProps{
 		DomainName: &awsapigateway.DomainNameOptions{
+			// TODO: This needs putting somewhere else, defeats the purpose of SSM above
 			DomainName: jsii.String("auth.benjaminkitson.com"),
 			Certificate: awscertificatemanager.Certificate_FromCertificateArn(
 				stack,

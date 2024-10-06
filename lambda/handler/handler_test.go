@@ -70,7 +70,7 @@ func TestHandler(t *testing.T) {
 		},
 		{
 			Name:               "Sign up success",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
 			RequestPath:        "/signup",
 			ExpectedStatusCode: 200,
 		},
@@ -114,7 +114,7 @@ func TestHandler(t *testing.T) {
 				isError: tt.AdapterError,
 			}
 
-			h, err := NewHandler(l, m)
+			h, err := NewHandler(l, m, "someurl.com")
 			if err != nil {
 				t.Fatalf("Failed to initialise handler")
 			}
@@ -129,6 +129,8 @@ func TestHandler(t *testing.T) {
 			if err != nil && !tt.IsHandlerErrorExpected {
 				t.Fatalf("Unexpected handler error")
 			}
+
+			t.Log(r.StatusCode)
 
 			if r.StatusCode != tt.ExpectedStatusCode {
 				t.Fatalf("Expected Status Code to be %v", tt.ExpectedStatusCode)
