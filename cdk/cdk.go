@@ -136,7 +136,7 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 	signIn.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	verifyEmail := authApi.Root().AddResource(jsii.String("verify"), &awsapigateway.ResourceOptions{})
-	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
+	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(verifyEmailLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	z := awsroute53.HostedZone_FromLookup(stack, jsii.String("zone"), &awsroute53.HostedZoneProviderProps{
 		DomainName: jsii.String("benjaminkitson.com"),
