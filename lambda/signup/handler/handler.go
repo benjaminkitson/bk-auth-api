@@ -56,7 +56,7 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 	}
 	r, err := json.Marshal(d)
 	if err != nil {
-		handler.logger.Error("signin error", zap.Error(err))
+		handler.logger.Error("signup error", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
 

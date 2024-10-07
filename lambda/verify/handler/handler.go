@@ -32,8 +32,6 @@ func NewHandler(logger *zap.Logger, a AuthProviderAdapter, c UserAPIClient) (han
 type AdapterHandler func(map[string]string) (map[string]string, error)
 
 type AuthProviderAdapter interface {
-	SignIn(map[string]string) (map[string]string, error)
-	SignUp(map[string]string) (map[string]string, error)
 	VerifyEmail(map[string]string) (map[string]string, error)
 }
 
@@ -54,13 +52,14 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 	}
 
 	// TODO: Might want to return more detailed information when these things go wrong? Maybe in some cases
-	d, err := handler.authProviderAdapter.VerifyEmail(bodyMap)
+	// For now we don't actually use the response
+	_, err = handler.authProviderAdapter.VerifyEmail(bodyMap)
 	if err != nil {
 		handler.logger.Error("Error verifying email", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
 
-	u, err := handler.userAPIClient.CreateUser(context.Background(), d["email"])
+	u, err := handler.userAPIClient.CreateUser(context.Background(), bodyMap["email"])
 	if err != nil {
 		handler.logger.Error("Error creating user", zap.Error(err))
 		return utils.RESPONSE_500, nil
@@ -69,7 +68,7 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 
 	r, err := json.Marshal(rm)
 	if err != nil {
-		handler.logger.Error("signin error", zap.Error(err))
+		handler.logger.Error("verify email error", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
 
