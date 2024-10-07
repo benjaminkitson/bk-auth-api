@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.55.0
 	github.com/aws/constructs-go/constructs/v10 v10.3.0
 	github.com/aws/jsii-runtime-go v1.103.1
-	github.com/benjaminkitson/bk-user-api v0.0.0-20241006095437-3ba632cbf2fe
+	github.com/benjaminkitson/bk-user-api v0.0.0-20241006191530-bf0846aca9eb
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 )

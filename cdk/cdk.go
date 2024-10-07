@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscognito"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
@@ -75,6 +76,15 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		Timeout:    awscdk.Duration_Minutes(jsii.Number(5)),
 		Environment: &map[string]*string{
 			"USER_API_PARAMETER_NAME": userAPIParamName,
+		},
+		InitialPolicy: &[]awsiam.PolicyStatement{
+			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+				Effect:  awsiam.Effect_ALLOW,
+				Actions: jsii.Strings("execute-api:Invoke"),
+				Resources: jsii.Strings(
+					"arn:aws:execute-api:eu-west-2:905418429454:6blz968hz8/*/*/*",
+				),
+			}),
 		},
 	})
 
