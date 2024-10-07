@@ -130,19 +130,13 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 	})
 
 	signUp := authApi.Root().AddResource(jsii.String("signup"), &awsapigateway.ResourceOptions{})
-	signUp.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signUpLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
-		AuthorizationType: awsapigateway.AuthorizationType_IAM,
-	})
+	signUp.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signUpLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	signIn := authApi.Root().AddResource(jsii.String("signin"), &awsapigateway.ResourceOptions{})
-	signIn.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
-		AuthorizationType: awsapigateway.AuthorizationType_IAM,
-	})
+	signIn.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	verifyEmail := authApi.Root().AddResource(jsii.String("verify"), &awsapigateway.ResourceOptions{})
-	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
-		AuthorizationType: awsapigateway.AuthorizationType_IAM,
-	})
+	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	z := awsroute53.HostedZone_FromLookup(stack, jsii.String("zone"), &awsroute53.HostedZoneProviderProps{
 		DomainName: jsii.String("benjaminkitson.com"),
