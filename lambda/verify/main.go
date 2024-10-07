@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	cognito "github.com/benjaminkitson/bk-auth-api/lambda/cognitoadapter"
-	"github.com/benjaminkitson/bk-auth-api/lambda/handler"
-	"github.com/benjaminkitson/bk-auth-api/lambda/secrets"
+	cognito "github.com/benjaminkitson/bk-auth-api/cognitoadapter"
+	"github.com/benjaminkitson/bk-auth-api/lambda/verify/handler"
+	"github.com/benjaminkitson/bk-auth-api/secrets"
 	"github.com/benjaminkitson/bk-user-api/userapiclient"
 	"go.uber.org/zap"
 )

@@ -22,6 +22,21 @@ type CdkWorkshopStackProps struct {
 	awscdk.StackProps
 }
 
+func defaultAuthLambdaProps(path string) *awslambdago.GoFunctionProps {
+	return &awslambdago.GoFunctionProps{
+		Architecture: awslambda.Architecture_ARM_64(),
+		Description:  jsii.String("Handler for Auth"),
+		Tracing:      awslambda.Tracing_ACTIVE,
+		Bundling: &awslambdago.BundlingOptions{
+			GoBuildFlags: jsii.Strings(`-trimpath -buildvcs=false`),
+		},
+		Runtime:    awslambda.Runtime_PROVIDED_AL2(),
+		MemorySize: jsii.Number(256),
+		Timeout:    awscdk.Duration_Minutes(jsii.Number(5)),
+		Entry:      &path,
+	}
+}
+
 func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorkshopStackProps) awscdk.Stack {
 	var sprops awscdk.StackProps
 	if props != nil {
@@ -61,39 +76,35 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		},
 	})
 
-	userAPIParamName := jsii.String("/http-endpoints/user-api")
-
-	authLambda := awslambdago.NewGoFunction(stack, jsii.String("authHandler"), &awslambdago.GoFunctionProps{
-		Architecture: awslambda.Architecture_ARM_64(),
-		Description:  jsii.String("Handler for Auth"),
-		Tracing:      awslambda.Tracing_ACTIVE,
-		Bundling: &awslambdago.BundlingOptions{
-			GoBuildFlags: jsii.Strings(`-trimpath -buildvcs=false`),
-		},
-		Runtime:    awslambda.Runtime_PROVIDED_AL2(),
-		Entry:      jsii.String("../lambda"),
-		MemorySize: jsii.Number(256),
-		Timeout:    awscdk.Duration_Minutes(jsii.Number(5)),
-		Environment: &map[string]*string{
-			"USER_API_PARAMETER_NAME": userAPIParamName,
-		},
-		InitialPolicy: &[]awsiam.PolicyStatement{
-			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-				Effect:  awsiam.Effect_ALLOW,
-				Actions: jsii.Strings("execute-api:Invoke"),
-				Resources: jsii.Strings(
-					"arn:aws:execute-api:eu-west-2:905418429454:6blz968hz8/*/*/*",
-				),
-			}),
-		},
-	})
-
 	c := awssecretsmanager.NewSecret(stack, jsii.String("cognitoClientId"), &awssecretsmanager.SecretProps{
 		//TODO: change this back to "COGNITO_CLIENT" once scheduled deletion has occured
 		SecretName: jsii.String("COGNITO_CLIENT"),
 	})
 
-	c.GrantRead(authLambda, nil)
+	// Fallback lambda
+	fallbackLambda := awslambdago.NewGoFunction(stack, jsii.String("fallbackHandler"), defaultAuthLambdaProps("../lambda/fallback"))
+
+	// Sign in
+	signInLambda := awslambdago.NewGoFunction(stack, jsii.String("signInHandler"), defaultAuthLambdaProps("../lambda/signin"))
+	c.GrantRead(signInLambda, nil)
+
+	// Sign up
+	signUpLambda := awslambdago.NewGoFunction(stack, jsii.String("signUpHandler"), defaultAuthLambdaProps("../lambda/signup"))
+	c.GrantRead(signUpLambda, nil)
+
+	// Verify Email
+	userAPIParamName := jsii.String("/http-endpoints/user-api")
+
+	verifyEmailLambda := awslambdago.NewGoFunction(stack, jsii.String("verifyEmailHandler"), defaultAuthLambdaProps("../lambda/verify"))
+	verifyEmailLambda.AddEnvironment(jsii.String("USER_API_PARAMETER_NAME"), userAPIParamName, &awslambda.EnvironmentOptions{})
+	verifyEmailLambda.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:  awsiam.Effect_ALLOW,
+		Actions: jsii.Strings("execute-api:Invoke"),
+		Resources: jsii.Strings(
+			"arn:aws:execute-api:eu-west-2:905418429454:6blz968hz8/*/*/*",
+		),
+	}))
+	c.GrantRead(verifyEmailLambda, nil)
 
 	p := awsssm.NewStringParameter(stack, jsii.String("userAPIEndpoint"), &awsssm.StringParameterProps{
 		ParameterName: userAPIParamName,
@@ -101,7 +112,7 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		StringValue: jsii.String("/"),
 	})
 
-	p.GrantRead(authLambda)
+	p.GrantRead(verifyEmailLambda)
 
 	authApi := awsapigateway.NewLambdaRestApi(stack, jsii.String("Endpoint"), &awsapigateway.LambdaRestApiProps{
 		DomainName: &awsapigateway.DomainNameOptions{
@@ -115,7 +126,22 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		},
 		DisableExecuteApiEndpoint: jsii.Bool(true),
 		RestApiName:               jsii.String("bk-auth"),
-		Handler:                   authLambda,
+		Handler:                   fallbackLambda,
+	})
+
+	signUp := authApi.Root().AddResource(jsii.String("signup"), &awsapigateway.ResourceOptions{})
+	signUp.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signUpLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
+		AuthorizationType: awsapigateway.AuthorizationType_IAM,
+	})
+
+	signIn := authApi.Root().AddResource(jsii.String("signin"), &awsapigateway.ResourceOptions{})
+	signIn.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
+		AuthorizationType: awsapigateway.AuthorizationType_IAM,
+	})
+
+	verifyEmail := authApi.Root().AddResource(jsii.String("verify"), &awsapigateway.ResourceOptions{})
+	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(signInLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
+		AuthorizationType: awsapigateway.AuthorizationType_IAM,
 	})
 
 	z := awsroute53.HostedZone_FromLookup(stack, jsii.String("zone"), &awsroute53.HostedZoneProviderProps{
@@ -132,6 +158,32 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 	// 	DefaultBehavior: &awscloudfront.BehaviorOptions{
 	// 		Origin: awscloudfrontorigins.NewRestApiOrigin(pokedexApi, &awscloudfrontorigins.RestApiOriginProps{}),
 	// 	},
+	// })
+
+	// userApi := awsapigateway.NewLambdaRestApi(stack, jsii.String("Endpoint"), &awsapigateway.LambdaRestApiProps{
+	// 	DomainName: &awsapigateway.DomainNameOptions{
+	// 		DomainName: jsii.String("api.benjaminkitson.com"),
+	// 		Certificate: awscertificatemanager.Certificate_FromCertificateArn(
+	// 			stack,
+	// 			jsii.String("benjaminkitson-certificate"),
+	// 			jsii.String("arn:aws:acm:eu-west-2:905418429454:certificate/42197bf4-d86d-404a-87a6-748c4858d916"),
+	// 		),
+	// 	},
+	// 	DisableExecuteApiEndpoint: jsii.Bool(true),
+	// 	RestApiName:               jsii.String("bk-api"),
+	// 	Handler:                   fallbackLambda,
+	// 	Proxy:                     jsii.Bool(false),
+	// })
+
+	// users := userApi.Root().AddResource(jsii.String("user"), &awsapigateway.ResourceOptions{})
+
+	// proxy := users.AddProxy(&awsapigateway.ProxyResourceOptions{
+	// 	DefaultIntegration: awsapigateway.NewLambdaIntegration(fallbackLambda, &awsapigateway.LambdaIntegrationOptions{}),
+	// 	AnyMethod:          jsii.Bool(false),
+	// })
+
+	// proxy.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(userLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{
+	// 	AuthorizationType: awsapigateway.AuthorizationType_IAM,
 	// })
 
 	return stack

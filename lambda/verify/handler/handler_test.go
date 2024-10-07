@@ -71,32 +71,6 @@ func TestHandler(t *testing.T) {
 
 	tests := []test{
 		{
-			Name:               "Sign in success",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
-			RequestPath:        "/signin",
-			ExpectedStatusCode: 200,
-		},
-		{
-			Name:               "Sign in auth provider adapter error",
-			AdapterError:       true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
-			RequestPath:        "/signin",
-			ExpectedStatusCode: 500,
-		},
-		{
-			Name:               "Sign up success",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
-			RequestPath:        "/signup",
-			ExpectedStatusCode: 200,
-		},
-		{
-			Name:               "Sign up auth provider adapter error",
-			AdapterError:       true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"abcabc123\"}",
-			RequestPath:        "/signup",
-			ExpectedStatusCode: 500,
-		},
-		{
 			Name:               "Verify email success",
 			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
 			RequestPath:        "/verify",
@@ -116,12 +90,12 @@ func TestHandler(t *testing.T) {
 			RequestPath:        "/verify",
 			ExpectedStatusCode: 500,
 		},
-		{
-			Name:               "Invalid path supplied",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
-			RequestPath:        "/someInvalidPath",
-			ExpectedStatusCode: 400,
-		},
+		// {
+		// 	Name:               "Invalid path supplied",
+		// 	RequestBody:        "{\"email\": \"abc@gmail.com\", \"password\": \"password\"}",
+		// 	RequestPath:        "/someInvalidPath",
+		// 	ExpectedStatusCode: 400,
+		// },
 	}
 
 	for _, tt := range tests {
@@ -145,10 +119,9 @@ func TestHandler(t *testing.T) {
 			req := events.APIGatewayProxyRequest{
 				// This test should probably fail if the body isn't the correct format?
 				Body: tt.RequestBody,
-				Path: tt.RequestPath,
 			}
 
-			r, err := h.Handle(context.TODO(), req)
+			r, err := h.Handle(context.Background(), req)
 			assert.Nil(t, err)
 
 			assert.Equal(t, tt.ExpectedStatusCode, r.StatusCode)
