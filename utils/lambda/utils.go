@@ -1,5 +1,7 @@
 package utils
 
+// TODO: Not sure if this package name follows correct convention with respect to folder structure
+
 import "github.com/aws/aws-lambda-go/events"
 
 var Headers = map[string]string{

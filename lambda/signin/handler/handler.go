@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/benjaminkitson/bk-auth-api/utils/auth"
 	utils "github.com/benjaminkitson/bk-auth-api/utils/lambda"
 	"github.com/benjaminkitson/bk-user-api/models"
 	"go.uber.org/zap"
@@ -16,21 +17,15 @@ type UserAPIClient interface {
 }
 
 type handler struct {
-	authProviderAdapter AuthProviderAdapter
-	logger              *zap.Logger
+	signIn auth.AdapterHandler
+	logger *zap.Logger
 }
 
-func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
+func NewHandler(logger *zap.Logger, si auth.AdapterHandler) (handler, error) {
 	return handler{
-		authProviderAdapter: a,
-		logger:              logger,
+		signIn: si,
+		logger: logger,
 	}, nil
-}
-
-type AdapterHandler func(map[string]string) (map[string]string, error)
-
-type AuthProviderAdapter interface {
-	SignIn(map[string]string) (map[string]string, error)
 }
 
 // TODO: make distinction between 400 and 500 errors
@@ -50,7 +45,7 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 		return utils.RESPONSE_500, fmt.Errorf("error parsing request body")
 	}
 
-	d, err := handler.authProviderAdapter.SignIn(bodyMap)
+	d, err := handler.signIn(bodyMap)
 	if err != nil {
 		handler.logger.Error("Failed to get response body from Cognito adapter", zap.Error(err))
 		return utils.RESPONSE_500, nil

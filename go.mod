@@ -14,12 +14,14 @@ require (
 	github.com/aws/constructs-go/constructs/v10 v10.3.0
 	github.com/aws/jsii-runtime-go v1.103.1
 	github.com/benjaminkitson/bk-user-api v0.0.0-20241006191530-bf0846aca9eb
+	github.com/mailslurp/mailslurp-client-go v0.0.0-20240603060551-5bc09baec5c5
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 )
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/antihax/optional v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.37 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.14 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.19 // indirect
@@ -37,6 +39,7 @@ require (
 	github.com/cdklabs/cloud-assembly-schema-go/awscdkcloudassemblyschema/v38 v38.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
+	github.com/golang/protobuf v1.2.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -45,8 +48,11 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.20.0 // indirect
+	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -17,3 +17,6 @@
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Temporary Go files with API keys etc
+env.go

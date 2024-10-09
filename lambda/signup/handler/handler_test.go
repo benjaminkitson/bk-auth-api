@@ -69,7 +69,7 @@ func TestHandler(t *testing.T) {
 				isError: tt.AdapterError,
 			}
 
-			h, err := NewHandler(l, m)
+			h, err := NewHandler(l, m.SignUp)
 			assert.Nil(t, err)
 
 			req := events.APIGatewayProxyRequest{

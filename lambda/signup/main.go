@@ -47,7 +47,7 @@ func main() {
 
 		ca := cognito.NewAdapter(cc, ccid, logger)
 
-		h, err := handler.NewHandler(logger, ca)
+		h, err := handler.NewHandler(logger, ca.SignUp)
 		if err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}

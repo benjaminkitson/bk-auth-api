@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/benjaminkitson/bk-auth-api/utils/auth"
 	utils "github.com/benjaminkitson/bk-auth-api/utils/lambda"
 	"github.com/benjaminkitson/bk-user-api/models"
 	"go.uber.org/zap"
@@ -16,23 +17,17 @@ type UserAPIClient interface {
 }
 
 type handler struct {
-	authProviderAdapter AuthProviderAdapter
+	authProviderAdapter auth.EmailVerifier
 	logger              *zap.Logger
 	userAPIClient       UserAPIClient
 }
 
-func NewHandler(logger *zap.Logger, a AuthProviderAdapter, c UserAPIClient) (handler, error) {
+func NewHandler(logger *zap.Logger, a auth.EmailVerifier, c UserAPIClient) (handler, error) {
 	return handler{
 		authProviderAdapter: a,
 		logger:              logger,
 		userAPIClient:       c,
 	}, nil
-}
-
-type AdapterHandler func(map[string]string) (map[string]string, error)
-
-type AuthProviderAdapter interface {
-	VerifyEmail(map[string]string) (map[string]string, error)
 }
 
 // TODO: understand how different methods are dealt with (post vs get etc)

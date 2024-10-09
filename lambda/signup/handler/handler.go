@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/benjaminkitson/bk-auth-api/utils/auth"
 	utils "github.com/benjaminkitson/bk-auth-api/utils/lambda"
 	"github.com/benjaminkitson/bk-user-api/models"
 	"go.uber.org/zap"
@@ -16,21 +17,16 @@ type UserAPIClient interface {
 }
 
 type handler struct {
-	authProviderAdapter AuthProviderAdapter
-	logger              *zap.Logger
+	signUp auth.AdapterHandler
+	logger *zap.Logger
 }
 
-func NewHandler(logger *zap.Logger, a AuthProviderAdapter) (handler, error) {
+// TODO: The adapterHandler being tied to the cognito package sort of defeats the purpose
+func NewHandler(logger *zap.Logger, su auth.AdapterHandler) (handler, error) {
 	return handler{
-		authProviderAdapter: a,
-		logger:              logger,
+		signUp: su,
+		logger: logger,
 	}, nil
-}
-
-type AdapterHandler func(map[string]string) (map[string]string, error)
-
-type AuthProviderAdapter interface {
-	SignUp(map[string]string) (map[string]string, error)
 }
 
 // TODO: understand how different methods are dealt with (post vs get etc)
@@ -49,7 +45,7 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 		return utils.RESPONSE_500, fmt.Errorf("error parsing request body")
 	}
 
-	d, err := handler.authProviderAdapter.SignUp(bodyMap)
+	d, err := handler.signUp(bodyMap)
 	if err != nil {
 		handler.logger.Error("Failed to get response body from Cognito adapter", zap.Error(err))
 		return utils.RESPONSE_500, nil
