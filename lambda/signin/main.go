@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	cognito "github.com/benjaminkitson/bk-auth-api/cognitoadapter"
+	"github.com/benjaminkitson/bk-auth-api/cognitoadapter/env"
 	"github.com/benjaminkitson/bk-auth-api/lambda/signin/handler"
 	"github.com/benjaminkitson/bk-auth-api/secrets"
 	"go.uber.org/zap"
@@ -45,7 +46,8 @@ func main() {
 			return events.APIGatewayProxyResponse{}, err
 		}
 
-		ca := cognito.NewAdapter(cc, ccid, logger)
+		p := env.PoolID
+		ca := cognito.NewAdapter(cc, ccid, p, logger)
 
 		h, err := handler.NewHandler(logger, ca.SignIn)
 		if err != nil {

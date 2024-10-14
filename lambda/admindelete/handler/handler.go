@@ -8,25 +8,24 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/benjaminkitson/bk-auth-api/utils/auth"
 	utils "github.com/benjaminkitson/bk-auth-api/utils/lambda"
-	"github.com/benjaminkitson/bk-user-api/models"
 	"go.uber.org/zap"
 )
 
 type UserAPIClient interface {
-	CreateUser(ctx context.Context, email string) (models.User, error)
+	DeleteUser(ctx context.Context, id string) (string, error)
 }
 
 type handler struct {
-	authProviderAdapter auth.EmailVerifier
-	logger              *zap.Logger
-	userAPIClient       UserAPIClient
+	delete        auth.AdapterHandler
+	logger        *zap.Logger
+	userAPIClient UserAPIClient
 }
 
-func NewHandler(logger *zap.Logger, a auth.EmailVerifier, c UserAPIClient) (handler, error) {
+func NewHandler(logger *zap.Logger, d auth.AdapterHandler, c UserAPIClient) (handler, error) {
 	return handler{
-		authProviderAdapter: a,
-		logger:              logger,
-		userAPIClient:       c,
+		delete:        d,
+		logger:        logger,
+		userAPIClient: c,
 	}, nil
 }
 
@@ -48,21 +47,23 @@ func (handler handler) Handle(_ context.Context, request events.APIGatewayProxyR
 
 	// TODO: Might want to return more detailed information when these things go wrong? Maybe in some cases
 	// For now we don't actually use the response
-	_, err = handler.authProviderAdapter.VerifyEmail(bodyMap)
+	_, err = handler.delete(bodyMap)
 	if err != nil {
-		handler.logger.Error("Error verifying email", zap.Error(err))
+		handler.logger.Error("Error deleting user from auth provider by email", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
 
-	u, err := handler.userAPIClient.CreateUser(context.Background(), bodyMap["email"])
+	id, err := handler.userAPIClient.DeleteUser(context.Background(), bodyMap["id"])
 	if err != nil {
-		handler.logger.Error("Error creating user", zap.Error(err))
+		// TODO: Error response doesn't work as expected here
+		handler.logger.Error("Error deleting user record from db", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
+	rm := map[string]string{"id": id}
 
-	r, err := json.Marshal(u)
+	r, err := json.Marshal(rm)
 	if err != nil {
-		handler.logger.Error("verify email error", zap.Error(err))
+		handler.logger.Error("admin delete error", zap.Error(err))
 		return utils.RESPONSE_500, nil
 	}
 

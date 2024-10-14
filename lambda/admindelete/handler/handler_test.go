@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/benjaminkitson/bk-user-api/models"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -15,12 +14,12 @@ type MockAdapter struct {
 	isError bool
 }
 
-func (ma MockAdapter) VerifyEmail(body map[string]string) (map[string]string, error) {
+func (ma MockAdapter) Delete(body map[string]string) (map[string]string, error) {
 	if ma.isError {
 		return nil, fmt.Errorf("Auth provider error")
 	}
 	return map[string]string{
-		"message": "Successfully verified email!",
+		"message": "Successfully deleted user",
 	}, nil
 }
 
@@ -28,13 +27,11 @@ type MockUserAPIClient struct {
 	isError bool
 }
 
-func (c MockUserAPIClient) CreateUser(ctx context.Context, email string) (models.User, error) {
+func (c MockUserAPIClient) DeleteUser(ctx context.Context, id string) (string, error) {
 	if c.isError {
-		return models.User{}, fmt.Errorf("API Client Error")
+		return "", fmt.Errorf("API Client Error")
 	}
-	return models.User{
-		Email: email,
-	}, nil
+	return "", nil
 }
 
 /*
@@ -54,21 +51,21 @@ func TestHandler(t *testing.T) {
 	tests := []test{
 		{
 			Name:               "Verify email success",
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\"}",
 			RequestPath:        "/verify",
 			ExpectedStatusCode: 200,
 		},
 		{
 			Name:               "Verify email auth provider adapter error",
 			AdapterError:       true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\"}",
 			RequestPath:        "/verify",
 			ExpectedStatusCode: 500,
 		},
 		{
 			Name:               "Verify email user api client error",
 			UserAPIClientError: true,
-			RequestBody:        "{\"email\": \"abc@gmail.com\", \"code\": \"1234\"}",
+			RequestBody:        "{\"email\": \"abc@gmail.com\"}",
 			RequestPath:        "/verify",
 			ExpectedStatusCode: 500,
 		},
@@ -95,7 +92,7 @@ func TestHandler(t *testing.T) {
 				isError: tt.UserAPIClientError,
 			}
 
-			h, err := NewHandler(l, m, c)
+			h, err := NewHandler(l, m.Delete, c)
 			assert.Nil(t, err)
 
 			req := events.APIGatewayProxyRequest{

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	cognito "github.com/benjaminkitson/bk-auth-api/cognitoadapter"
+	"github.com/benjaminkitson/bk-auth-api/cognitoadapter/env"
 	"github.com/benjaminkitson/bk-auth-api/lambda/verify/handler"
 	"github.com/benjaminkitson/bk-auth-api/secrets"
 	"github.com/benjaminkitson/bk-user-api/userapiclient"
@@ -48,7 +49,8 @@ func main() {
 			return events.APIGatewayProxyResponse{}, err
 		}
 
-		ca := cognito.NewAdapter(cc, ccid, logger)
+		p := env.PoolID
+		ca := cognito.NewAdapter(cc, ccid, p, logger)
 
 		c := ssm.NewFromConfig(sdkConfig)
 

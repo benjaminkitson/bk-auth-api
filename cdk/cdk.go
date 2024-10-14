@@ -95,6 +95,12 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 	// Verify Email
 	userAPIParamName := jsii.String("/http-endpoints/user-api")
 
+	p := awsssm.NewStringParameter(stack, jsii.String("userAPIEndpoint"), &awsssm.StringParameterProps{
+		ParameterName: userAPIParamName,
+		// Added after the fact in the console
+		StringValue: jsii.String("/"),
+	})
+
 	verifyEmailLambda := awslambdago.NewGoFunction(stack, jsii.String("verifyEmailHandler"), defaultAuthLambdaProps("../lambda/verify"))
 	verifyEmailLambda.AddEnvironment(jsii.String("USER_API_PARAMETER_NAME"), userAPIParamName, &awslambda.EnvironmentOptions{})
 	verifyEmailLambda.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
@@ -105,14 +111,27 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 		),
 	}))
 	c.GrantRead(verifyEmailLambda, nil)
-
-	p := awsssm.NewStringParameter(stack, jsii.String("userAPIEndpoint"), &awsssm.StringParameterProps{
-		ParameterName: userAPIParamName,
-		// Added after the fact in the console
-		StringValue: jsii.String("/"),
-	})
-
 	p.GrantRead(verifyEmailLambda)
+
+	// Admin Delete User
+	adminDeleteLambda := awslambdago.NewGoFunction(stack, jsii.String("adminDeleteHandler"), defaultAuthLambdaProps("../lambda/admindelete"))
+	adminDeleteLambda.AddEnvironment(jsii.String("USER_API_PARAMETER_NAME"), userAPIParamName, &awslambda.EnvironmentOptions{})
+	adminDeleteLambda.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:  awsiam.Effect_ALLOW,
+		Actions: jsii.Strings("execute-api:Invoke"),
+		Resources: jsii.Strings(
+			"arn:aws:execute-api:eu-west-2:905418429454:6blz968hz8/*/*/*",
+		),
+	}))
+	adminDeleteLambda.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:  awsiam.Effect_ALLOW,
+		Actions: jsii.Strings("cognito-idp:AdminDeleteUser"),
+		Resources: jsii.Strings(
+			"arn:aws:cognito-idp:eu-west-2:905418429454:userpool/eu-west-2_PsrvIdHug",
+		),
+	}))
+	c.GrantRead(adminDeleteLambda, nil)
+	p.GrantRead(adminDeleteLambda)
 
 	authApi := awsapigateway.NewLambdaRestApi(stack, jsii.String("Endpoint"), &awsapigateway.LambdaRestApiProps{
 		DomainName: &awsapigateway.DomainNameOptions{
@@ -137,6 +156,11 @@ func NewCdkWorkshopStack(scope constructs.Construct, id string, props *CdkWorksh
 
 	verifyEmail := authApi.Root().AddResource(jsii.String("verify"), &awsapigateway.ResourceOptions{})
 	verifyEmail.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(verifyEmailLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
+
+	// TODO: Change to DELETE method at some point
+	// TODO: Add authentication (presumably IAM or something)
+	adminDelete := authApi.Root().AddResource(jsii.String("admin-delete"), &awsapigateway.ResourceOptions{})
+	adminDelete.AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(adminDeleteLambda, &awsapigateway.LambdaIntegrationOptions{}), &awsapigateway.MethodOptions{})
 
 	z := awsroute53.HostedZone_FromLookup(stack, jsii.String("zone"), &awsroute53.HostedZoneProviderProps{
 		DomainName: jsii.String("benjaminkitson.com"),

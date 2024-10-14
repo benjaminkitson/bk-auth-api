@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	cognito "github.com/benjaminkitson/bk-auth-api/cognitoadapter"
 	"github.com/benjaminkitson/bk-auth-api/cognitoadapter/env"
-	"github.com/benjaminkitson/bk-auth-api/lambda/signup/handler"
+	"github.com/benjaminkitson/bk-auth-api/lambda/admindelete/handler"
 	"github.com/benjaminkitson/bk-auth-api/secrets"
+	"github.com/benjaminkitson/bk-user-api/userapiclient"
 	"go.uber.org/zap"
 )
 
@@ -46,10 +49,28 @@ func main() {
 			return events.APIGatewayProxyResponse{}, err
 		}
 
+		// TODO: change this to properly import from AWS
 		p := env.PoolID
+
 		ca := cognito.NewAdapter(cc, ccid, p, logger)
 
-		h, err := handler.NewHandler(logger, ca.SignUp)
+		c := ssm.NewFromConfig(sdkConfig)
+
+		paramName := os.Getenv("USER_API_PARAMETER_NAME")
+
+		o, err := c.GetParameter(ctx, &ssm.GetParameterInput{Name: &paramName})
+		if err != nil {
+			return events.APIGatewayProxyResponse{}, err
+		}
+
+		n := o.Parameter.Value
+
+		uc, err := userapiclient.NewClient(*n, logger)
+		if err != nil {
+			return events.APIGatewayProxyResponse{}, err
+		}
+
+		h, err := handler.NewHandler(logger, ca.AdminDelete, uc)
 		if err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}

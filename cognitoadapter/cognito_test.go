@@ -42,6 +42,13 @@ func (ma MockCognitoClient) ConfirmSignUp(ctx context.Context, params *cognitoid
 	return &cognitoidentityprovider.ConfirmSignUpOutput{}, nil
 }
 
+func (ma MockCognitoClient) AdminDeleteUser(ctx context.Context, params *cognitoidentityprovider.AdminDeleteUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminDeleteUserOutput, error) {
+	if ma.isError {
+		return nil, fmt.Errorf("AdminDeleteUser error")
+	}
+	return &cognitoidentityprovider.AdminDeleteUserOutput{}, nil
+}
+
 /*
 Tests the basic workings of the handler, using a mocked auth provider client that either succeeds or returns some generic error
 */
@@ -93,7 +100,7 @@ func TestSignIn(t *testing.T) {
 				isError: tt.ExpectedError,
 			}
 
-			ca := NewAdapter(m, "MockClientId", l)
+			ca := NewAdapter(m, "MockClientId", "mockPoolID", l)
 			if err != nil {
 				t.Fatalf("Failed to initialise handler")
 			}
@@ -156,7 +163,7 @@ func TestSignUp(t *testing.T) {
 				isError: tt.ExpectedError,
 			}
 
-			ca := NewAdapter(m, "MockClientId", l)
+			ca := NewAdapter(m, "MockClientId", "mockPoolID", l)
 			if err != nil {
 				t.Fatalf("Failed to initialise handler")
 			}
@@ -219,12 +226,73 @@ func TestVerifyEmail(t *testing.T) {
 				isError: tt.ExpectedError,
 			}
 
-			ca := NewAdapter(m, "MockClientId", l)
+			ca := NewAdapter(m, "MockClientId", "mockPoolID", l)
 			if err != nil {
 				t.Fatalf("Failed to initialise handler")
 			}
 
 			r, err := ca.VerifyEmail(tt.RequestBody)
+			if err != nil && !tt.ExpectedError {
+				t.Fatalf("Unexpected handler error %v", err)
+			}
+			if !reflect.DeepEqual(r, tt.ExpectedResponse) {
+				t.Fatalf("Unexpected response %v", r)
+			}
+		})
+	}
+}
+
+func TestAdminDelete(t *testing.T) {
+	type test struct {
+		Name             string
+		RequestBody      map[string]string
+		ExpectedError    bool
+		ExpectedResponse map[string]string
+	}
+
+	tests := []test{
+		{
+			Name: "Admin delete user success",
+			RequestBody: map[string]string{
+				"email": "abc@gmail.com",
+			},
+			ExpectedResponse: map[string]string{
+				"message": adminDeleteSuccessMessage,
+			},
+		},
+		{
+			Name: "Admin delete user cognito client error",
+			RequestBody: map[string]string{
+				"email": "abc@gmail.com",
+			},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+		{
+			Name:             "Admin delete user invalid request body error",
+			RequestBody:      map[string]string{},
+			ExpectedError:    true,
+			ExpectedResponse: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			l, err := zap.NewDevelopment()
+			if err != nil {
+				t.Fatalf("Failed to initialise dev logger")
+			}
+
+			m := MockCognitoClient{
+				isError: tt.ExpectedError,
+			}
+
+			ca := NewAdapter(m, "MockClientId", "mockPoolID", l)
+			if err != nil {
+				t.Fatalf("Failed to initialise handler")
+			}
+
+			r, err := ca.AdminDelete(tt.RequestBody)
 			if err != nil && !tt.ExpectedError {
 				t.Fatalf("Unexpected handler error %v", err)
 			}

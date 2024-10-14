@@ -1,4 +1,4 @@
-package signup_test
+package integration
 
 import (
 	"bytes"
@@ -13,39 +13,45 @@ import (
 
 	"github.com/antihax/optional"
 	"github.com/benjaminkitson/bk-auth-api/integration/env"
+	"github.com/benjaminkitson/bk-user-api/models"
 	mail "github.com/mailslurp/mailslurp-client-go"
 	"github.com/stretchr/testify/assert"
 )
 
-func AuthPost(p string, body map[string]string) error {
+func AuthPost(p string, body map[string]string) (models.User, error) {
 	r, err := url.Parse(env.AuthURL)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 	r.Path = path.Join(r.Path, p)
 	b, err := json.Marshal(body)
 	br := bytes.NewReader(b)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, r.String(), br)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	c := http.Client{}
 
 	res, err := c.Do(req)
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	if res.StatusCode == 200 {
-		return nil
+		var u models.User
+		err = json.NewDecoder(res.Body).Decode(&u)
+		if err != nil {
+			return models.User{}, err
+		}
+		return u, nil
 	}
 
-	return fmt.Errorf("unexpected status code %v", res.StatusCode)
+	return models.User{}, fmt.Errorf("unexpected status code %v", res.StatusCode)
 }
 
 func GetVerificationCode() (string, error) {
@@ -59,7 +65,7 @@ func GetVerificationCode() (string, error) {
 	client := mail.NewAPIClient(config)
 
 	waitOpts := &mail.WaitForLatestEmailOpts{
-		InboxId:    optional.NewInterface(env.MailAPIKey),
+		InboxId:    optional.NewInterface(env.InboxID),
 		Timeout:    optional.NewInt64(30000),
 		UnreadOnly: optional.NewBool(true),
 	}
@@ -91,7 +97,8 @@ func TestSignUp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			err := AuthPost("signup", map[string]string{
+			t.Log("Attempting sign up...")
+			_, err := AuthPost("signup", map[string]string{
 				"email":    env.TestEmail,
 				"password": "Password123",
 			})
@@ -100,14 +107,18 @@ func TestSignUp(t *testing.T) {
 				t.Log(err.Error())
 			}
 			assert.NoError(t, err)
+			t.Log("Sign up succesfull!")
 
+			t.Log("Getting email verification code...")
 			c, err := GetVerificationCode()
 			if err != nil {
 				t.Log(err.Error())
 			}
 			assert.NoError(t, err)
+			t.Logf("Retrieved code %v", c)
 
-			err = AuthPost("verify", map[string]string{
+			t.Log("Verifying email address...")
+			u, err := AuthPost("verify", map[string]string{
 				"email": env.TestEmail,
 				"code":  c,
 			})
@@ -115,6 +126,18 @@ func TestSignUp(t *testing.T) {
 				t.Log(err.Error())
 			}
 			assert.NoError(t, err)
+			t.Logf("Verified email address for user %v", u.UserID)
+
+			t.Logf("Cleaning up created user...")
+			r, err := AuthPost("admin-delete", map[string]string{
+				"id":    u.UserID,
+				"email": u.Email,
+			})
+			if err != nil {
+				t.Log(err.Error())
+			}
+			assert.NoError(t, err)
+			t.Logf("Deleted data for user %v", r.UserID)
 		})
 	}
 }
